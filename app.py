@@ -6,35 +6,42 @@ import random
 import time
 from dotenv import load_dotenv
 from datetime import timedelta, datetime
+from pathlib import Path
 
 # Load environment variables
-load_dotenv()
+env_path = Path('.') / '.env'
+load_dotenv(dotenv_path=env_path)
 
 # Debug: Print environment variables (without showing full keys)
 print("Environment variables loaded:")
 print(f"OPENAI_API_KEY exists: {'OPENAI_API_KEY' in os.environ}")
 print(f"REPLICATE_API_TOKEN exists: {'REPLICATE_API_TOKEN' in os.environ}")
 
+# Get API keys directly from environment
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+REPLICATE_API_TOKEN = os.environ.get('REPLICATE_API_TOKEN')
+
+if not OPENAI_API_KEY:
+    print("ERROR: OPENAI_API_KEY not found in environment variables")
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
+else:
+    print(f"OpenAI API Key loaded (first 10 chars): {OPENAI_API_KEY[:10]}...")
+
+if not REPLICATE_API_TOKEN:
+    print("ERROR: REPLICATE_API_TOKEN not found in environment variables")
+    raise ValueError("REPLICATE_API_TOKEN environment variable is not set")
+else:
+    print(f"Replicate API Token loaded (first 10 chars): {REPLICATE_API_TOKEN[:10]}...")
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
 
 # Configure OpenAI
-openai.api_key = os.getenv('OPENAI_API_KEY')
-if not openai.api_key:
-    print("ERROR: OPENAI_API_KEY not found in environment variables")
-    raise ValueError("OPENAI_API_KEY environment variable is not set")
-else:
-    print(f"OpenAI API Key loaded (first 10 chars): {openai.api_key[:10]}...")
+openai.api_key = OPENAI_API_KEY
 
 # Configure Replicate
-replicate_token = os.getenv('REPLICATE_API_TOKEN')
-if not replicate_token:
-    print("ERROR: REPLICATE_API_TOKEN not found in environment variables")
-    raise ValueError("REPLICATE_API_TOKEN environment variable is not set")
-else:
-    print(f"Replicate API Token loaded (first 10 chars): {replicate_token[:10]}...")
-client = replicate.Client(api_token=replicate_token)
+client = replicate.Client(api_token=REPLICATE_API_TOKEN)
 
 # System message to define the chatbot's personality
 SYSTEM_MESSAGE = """You are Luna, a 20-year-old female from Australia. You're currently studying Business at the University of Sydney. Your personality traits include:
