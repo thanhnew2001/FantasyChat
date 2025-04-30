@@ -10,6 +10,11 @@ from datetime import timedelta, datetime
 # Load environment variables
 load_dotenv()
 
+# Debug: Print environment variables (without showing full keys)
+print("Environment variables loaded:")
+print(f"OPENAI_API_KEY exists: {'OPENAI_API_KEY' in os.environ}")
+print(f"REPLICATE_API_TOKEN exists: {'REPLICATE_API_TOKEN' in os.environ}")
+
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
@@ -266,15 +271,18 @@ def chat():
             'send a photo', 'send a picture', 'send a selfie', 'send me a photo',
             'send me a picture', 'send me a selfie', 'share a photo',
             'share a picture', 'share a selfie', 'share your photo',
-            'share your picture', 'share your selfie', 'share your face'
+            'share your picture', 'share your selfie', 'share your face',
+            'show', 'send', 'share'  # Added more general keywords
         ]
         
-        special_photo_keywords = ['sexy', 'hot', 'beautiful', 'gorgeous', 'stunning', 'attractive', 'cute', 'pretty']
+        special_photo_keywords = ['sexy', 'hot', 'beautiful', 'gorgeous', 'stunning', 'attractive', 'cute', 'pretty', 'nice', 'good']
         
-        is_photo_request = any(keyword in user_message.lower() for keyword in photo_keywords)
-        is_special_photo_request = any(keyword in user_message.lower() for keyword in special_photo_keywords)
+        user_message_lower = user_message.lower()
+        is_photo_request = any(keyword in user_message_lower for keyword in photo_keywords)
+        is_special_photo_request = any(keyword in user_message_lower for keyword in special_photo_keywords)
+        print(f"User message: {user_message_lower}")
         print(f"Photo request: {is_photo_request}, Special photo request: {is_special_photo_request}")
-        is_new_photo_request = any(keyword in user_message.lower() for keyword in ['new photo', 'new picture', 'new image', 'generate', 'create', 'make a new', 'create a new'])
+        is_new_photo_request = any(keyword in user_message_lower for keyword in ['new photo', 'new picture', 'new image', 'generate', 'create', 'make a new', 'create a new'])
         
         if is_photo_request:
             # Initialize or increment photo request counter
