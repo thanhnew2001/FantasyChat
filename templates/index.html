@@ -14,22 +14,30 @@
 
         body {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            gap: 20px;
+            height: 90vh;
         }
 
         .chat-container {
-            width: 90%;
-            max-width: 800px;
-            height: 80vh;
+            flex: 1;
             background: white;
             border-radius: 20px;
             box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            min-width: 0; /* Prevents flex item from overflowing */
         }
 
         .chat-header {
@@ -88,6 +96,7 @@
             border-radius: 20px;
             font-size: 1em;
             line-height: 1.4;
+            word-wrap: break-word;
         }
 
         .user .message-content {
@@ -104,6 +113,7 @@
 
         .chat-image {
             max-width: 300px;
+            width: 100%;
             border-radius: 10px;
             margin-top: 10px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -139,6 +149,7 @@
             cursor: pointer;
             font-size: 1em;
             transition: background 0.3s;
+            white-space: nowrap;
         }
 
         #send-button:hover {
@@ -174,24 +185,34 @@
 
         .sidebar {
             width: 250px;
-            border-right: 1px solid #e4e6eb;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
             padding: 20px;
-            background: #f8f9fa;
-            border-radius: 10px 0 0 10px;
+            display: flex;
+            flex-direction: column;
         }
 
         .history-button {
             width: 100%;
+            padding: 12px;
             margin-bottom: 10px;
-            background-color: #e4e6eb;
-            color: #1c1e21;
+            background: #ff69b4;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
         }
 
         .history-button:hover {
-            background-color: #d8dadf;
+            background: #ff1493;
         }
 
         .history-list {
+            flex: 1;
+            overflow-y: auto;
             margin-top: 20px;
         }
 
@@ -212,39 +233,75 @@
             font-size: 0.8em;
             color: #65676b;
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .main-container {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .chat-container {
+                height: 70vh;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 200px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .chat-image {
+                max-width: 200px;
+            }
+
+            #send-button {
+                padding: 12px 15px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">
-            <img src="/static/luna.webp" alt="Luna" class="avatar">
-            Chat with Luna 💕
-        </div>
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot">
-                <img src="/static/luna.webp" alt="Luna" class="bot-avatar">
-                <div class="message-content">
-                    Hi there! I'm Luna 👋 I'm excited to chat with you! How are you doing today?
+    <div class="main-container">
+        <div class="chat-container">
+            <div class="chat-header">
+                <img src="/static/luna.webp" alt="Luna" class="avatar">
+                Chat with Luna 💕
+            </div>
+            <div class="chat-messages" id="chat-messages">
+                <div class="message bot">
+                    <img src="/static/luna.webp" alt="Luna" class="bot-avatar">
+                    <div class="message-content">
+                        Hi there! I'm Luna 👋 I'm excited to chat with you! How are you doing today?
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="typing-indicator" id="typing-indicator" style="display: none;">
-            <img src="/static/luna.webp" alt="Luna" class="bot-avatar">
-            <div class="message-content">
-                <span></span>
-                <span></span>
-                <span></span>
+            <div class="typing-indicator" id="typing-indicator" style="display: none;">
+                <img src="/static/luna.webp" alt="Luna" class="bot-avatar">
+                <div class="message-content">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off">
+                <button id="send-button">Send</button>
             </div>
         </div>
-        <div class="chat-input">
-            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off">
-            <button id="send-button">Send</button>
-        </div>
-    </div>
 
-    <div class="sidebar">
-        <button class="history-button" onclick="loadConversationHistory()">Load Past Conversations</button>
-        <div class="history-list" id="historyList"></div>
+        <div class="sidebar">
+            <button class="history-button" onclick="loadConversationHistory()">Load Past Conversations</button>
+            <div class="history-list" id="historyList"></div>
+        </div>
     </div>
 
     <script>
