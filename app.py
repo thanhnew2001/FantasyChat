@@ -15,10 +15,15 @@ app.secret_key = os.urandom(24)  # Required for session
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
 
 # Configure OpenAI
-openai.api_key = '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'
+openai.api_key = os.getenv('OPENAI_API_KEY')
+if not openai.api_key:
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
 
 # Configure Replicate
-client = replicate.Client(api_token="r8_SuHYByJqSrXlm2H50QFZ8Px6B3UYTzL0UDE1m")
+replicate_token = os.getenv('REPLICATE_API_TOKEN')
+if not replicate_token:
+    raise ValueError("REPLICATE_API_TOKEN environment variable is not set")
+client = replicate.Client(api_token=replicate_token)
 
 # System message to define the chatbot's personality
 SYSTEM_MESSAGE = """You are Luna, a 20-year-old female from Australia. You're currently studying Business at the University of Sydney. Your personality traits include:
