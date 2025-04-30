@@ -16,10 +16,11 @@ app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
 
 # Configure OpenAI
 try:
-    # Get API key from environment variable
+    # Try to get API key from environment variable first
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
+        # Fallback to hardcoded key if environment variable is not set
+        api_key = ''
     
     # Clean the API key
     api_key = api_key.strip()
@@ -29,10 +30,9 @@ try:
     openai.api_base = "https://api.openai.com/v1"
 except Exception as e:
     print(f"Error setting up OpenAI configuration: {str(e)}")
-    raise
 
 # Configure Replicate
-client = replicate.Client(api_token="r8_SuHYByJqSrXlm2H50QFZ8Px6B3UYTzL0UDE1m")
+client = replicate.Client(api_token="")
 
 # System message to define the chatbot's personality
 SYSTEM_MESSAGE = """You are Luna, a 20-year-old female from Australia. You're currently studying Business at the University of Sydney. Your personality traits include:
