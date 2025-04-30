@@ -15,24 +15,10 @@ app.secret_key = os.urandom(24)  # Required for session
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
 
 # Configure OpenAI
-try:
-    # Try to get API key from environment variable first
-    api_key = os.getenv('OPENAI_API_KEY')
-    if not api_key:
-        # Fallback to hardcoded key if environment variable is not set
-        api_key = ''
-    
-    # Clean the API key
-    api_key = api_key.strip()
-    print(f"Using API key starting with: {api_key[:10]}...")
-    
-    openai.api_key = api_key
-    openai.api_base = "https://api.openai.com/v1"
-except Exception as e:
-    print(f"Error setting up OpenAI configuration: {str(e)}")
+openai.api_key = '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'
 
 # Configure Replicate
-client = replicate.Client(api_token="")
+client = replicate.Client(api_token="r8_SuHYByJqSrXlm2H50QFZ8Px6B3UYTzL0UDE1m")
 
 # System message to define the chatbot's personality
 SYSTEM_MESSAGE = """You are Luna, a 20-year-old female from Australia. You're currently studying Business at the University of Sydney. Your personality traits include:
@@ -376,28 +362,5 @@ def chat():
         print(f"Error in chat process: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# Add debug logging for API calls
-def test_openai_connection():
-    try:
-        print("Testing OpenAI API connection...")
-        print(f"API Base URL: {openai.api_base}")
-        print(f"API Key (first 10 chars): {openai.api_key[:10]}...")
-        
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": "test"}],
-            max_tokens=5
-        )
-        print("OpenAI API connection successful!")
-        return True
-    except Exception as e:
-        print(f"OpenAI API connection failed: {str(e)}")
-        print(f"Full error details: {e.__dict__}")
-        return False
-
-# Test connection on startup
 if __name__ == '__main__':
-    if test_openai_connection():
-        app.run(debug=True, port=5050)
-    else:
-        print("Failed to connect to OpenAI API. Please check your API key and network settings.")
+    app.run(debug=True)
