@@ -237,34 +237,106 @@
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
             body {
-                padding: 10px;
+                padding: 0;
+                height: 100vh;
+                overflow: hidden;
             }
 
             .main-container {
                 flex-direction: column;
-                height: auto;
+                height: 100vh;
+                width: 100%;
+                max-width: 100%;
+                gap: 0;
             }
 
             .chat-container {
-                height: 70vh;
+                height: 100vh;
+                border-radius: 0;
+                display: flex;
+                flex-direction: column;
             }
 
-            .sidebar {
-                width: 100%;
-                height: auto;
-                max-height: 200px;
+            .chat-header {
+                padding: 15px;
+                font-size: 1.2em;
+            }
+
+            .chat-messages {
+                flex: 1;
+                padding: 15px;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .message {
+                margin-bottom: 15px;
             }
 
             .message-content {
-                max-width: 85%;
+                max-width: 90%;
+                padding: 10px 15px;
+                font-size: 0.95em;
             }
 
             .chat-image {
-                max-width: 200px;
+                max-width: 250px;
+                width: 100%;
+            }
+
+            .chat-input {
+                padding: 15px;
+                background: #f8f8f8;
+                border-top: 1px solid #e0e0e0;
+            }
+
+            #message-input {
+                padding: 10px 15px;
+                font-size: 0.95em;
             }
 
             #send-button {
-                padding: 12px 15px;
+                padding: 10px 20px;
+                font-size: 0.95em;
+            }
+
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                width: 100%;
+                height: auto;
+                max-height: 40vh;
+                border-radius: 20px 20px 0 0;
+                z-index: 1000;
+                transform: translateY(100%);
+                transition: transform 0.3s ease;
+                box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            }
+
+            .sidebar.active {
+                transform: translateY(0);
+            }
+
+            .history-button {
+                padding: 15px;
+                font-size: 1em;
+                margin-bottom: 15px;
+            }
+
+            .history-list {
+                max-height: calc(40vh - 80px);
+                overflow-y: auto;
+            }
+
+            .history-item {
+                padding: 12px;
+                margin: 8px 0;
+            }
+
+            .typing-indicator {
+                padding: 10px 15px;
             }
         }
     </style>
@@ -298,8 +370,8 @@
             </div>
         </div>
 
-        <div class="sidebar">
-            <button class="history-button" onclick="loadConversationHistory()">Load Past Conversations</button>
+        <div class="sidebar" id="sidebar">
+            <button class="history-button" onclick="toggleHistory()">Load Past Conversations</button>
             <div class="history-list" id="historyList"></div>
         </div>
     </div>
@@ -488,6 +560,21 @@
             localStorage.setItem('currentConversationId', newConversation.id);
         };
         document.querySelector('.sidebar').insertBefore(newChatButton, document.querySelector('.history-button'));
+
+        function toggleHistory() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('active');
+        }
+
+        // Close sidebar when clicking outside
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const historyButton = document.querySelector('.history-button');
+            
+            if (!sidebar.contains(event.target) && !historyButton.contains(event.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
     </script>
 </body>
 </html> 
