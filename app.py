@@ -153,31 +153,6 @@ def get_special_photo():
         print(f"Error getting special photo: {str(e)}")
         return None
 
-def generate_image_caption():
-    """Generate a random flirty caption using OpenAI"""
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": """You are a flirty, playful 20-year-old Australian girl. Generate a short, flirty caption for a photo you're about to share. 
-                The caption should be:
-                - Playful and flirty but tasteful
-                - Short (1-2 sentences)
-                - Include emojis
-                - Sound natural and spontaneous
-                - Vary between different styles (teasing, sweet, mysterious, etc.)
-                - Never reveal you're an AI
-                - Keep it classy but fun"""},
-                {"role": "user", "content": "Generate a random flirty caption for a photo I'm about to share"}
-            ],
-            temperature=0.9,
-            max_tokens=50
-        )
-        return response.choices[0].message.content
-    except Exception as e:
-        print(f"Error generating caption: {str(e)}")
-        return "Here's a special one just for you... 😘"
-
 @app.route('/')
 def home():
     # Make the session permanent
@@ -332,8 +307,14 @@ def chat():
                         image_url = get_random_photo()
                     
                     if image_url:
-                        # Generate a random caption using OpenAI
-                        bot_response = f"{generate_image_caption()}\n[Image: {image_url}]"
+                        # Simple response for sharing the photo
+                        responses = [
+                            "Here you go! 😊",
+                            "Hope you like it! 💕",
+                            "Enjoy! 😘",
+                            "Here's something special for you! 💋"
+                        ]
+                        bot_response = f"{random.choice(responses)}\n[Image: {image_url}]"
                     else:
                         bot_response = "Oops, no photos right now! 😅"
                 except Exception as e:
