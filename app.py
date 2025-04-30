@@ -19,22 +19,37 @@ app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
 
+def validate_openai_key(key):
+    """Validate OpenAI API key format"""
+    if not key:
+        return False
+    # OpenAI API keys typically start with 'sk-' and are 51 characters long
+    return key.startswith('sk-') and len(key) >= 51
+
 # Configure OpenAI
 openai.api_key = os.getenv('OPENAI_API_KEY', '').strip().rstrip('$')
-if not openai.api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
+if not validate_openai_key(openai.api_key):
+    print("Warning: OpenAI API key appears to be invalid. Please check your .env file.")
+    print("API key should start with 'sk-' and be at least 51 characters long.")
+    print(f"Current key starts with: {openai.api_key[:10]}...")
+    raise ValueError("Invalid OpenAI API key format")
 
 # Test OpenAI API key
 try:
-    # Make a simple API call to verify the key
-    openai.ChatCompletion.create(
+    # Make a simple API call
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": "test"}],
         max_tokens=5
     )
 except Exception as e:
     print(f"OpenAI API Key Error: {str(e)}")
-    raise ValueError(f"Invalid OpenAI API key. Please check your .env file. Error: {str(e)}")
+    print("\nPlease check your OpenAI API key:")
+    print("1. Go to https://platform.openai.com/account/api-keys")
+    print("2. Create a new API key")
+    print("3. Update your .env file with the new key")
+    print("4. Make sure the key starts with 'sk-' and is at least 51 characters long")
+    raise ValueError(f"OpenAI API key validation failed. Please check your .env file.")
 
 # Configure Replicate
 replicate_api_token = os.getenv('REPLICATE_API_TOKEN', '').strip().rstrip('$')
