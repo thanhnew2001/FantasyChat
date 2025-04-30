@@ -6,42 +6,24 @@ import random
 import time
 from dotenv import load_dotenv
 from datetime import timedelta, datetime
-from pathlib import Path
 
 # Load environment variables
-env_path = Path('.') / '.env'
-load_dotenv(dotenv_path=env_path)
-
-# Debug: Print environment variables (without showing full keys)
-print("Environment variables loaded:")
-print(f"OPENAI_API_KEY exists: {'OPENAI_API_KEY' in os.environ}")
-print(f"REPLICATE_API_TOKEN exists: {'REPLICATE_API_TOKEN' in os.environ}")
-
-# Get API keys directly from environment
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-REPLICATE_API_TOKEN = os.environ.get('REPLICATE_API_TOKEN')
-
-if not OPENAI_API_KEY:
-    print("ERROR: OPENAI_API_KEY not found in environment variables")
-    raise ValueError("OPENAI_API_KEY environment variable is not set")
-else:
-    print(f"OpenAI API Key loaded (first 10 chars): {OPENAI_API_KEY[:10]}...")
-
-if not REPLICATE_API_TOKEN:
-    print("ERROR: REPLICATE_API_TOKEN not found in environment variables")
-    raise ValueError("REPLICATE_API_TOKEN environment variable is not set")
-else:
-    print(f"Replicate API Token loaded (first 10 chars): {REPLICATE_API_TOKEN[:10]}...")
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)  # Required for session
 app.permanent_session_lifetime = timedelta(days=30)  # Session lasts for 30 days
 
 # Configure OpenAI
-openai.api_key = OPENAI_API_KEY
+openai.api_key = os.getenv('OPENAI_API_KEY')
+if not openai.api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
 
 # Configure Replicate
-client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+replicate_api_token = os.getenv('REPLICATE_API_TOKEN')
+if not replicate_api_token:
+    raise ValueError("REPLICATE_API_TOKEN not found in environment variables")
+client = replicate.Client(api_token=replicate_api_token)
 
 # System message to define the chatbot's personality
 SYSTEM_MESSAGE = """You are Luna, a 20-year-old female from Australia. You're currently studying Business at the University of Sydney. Your personality traits include:
@@ -146,43 +128,32 @@ def generate_image(prompt):
 
 def is_polite_request(message):
     """Check if the request is polite and appropriate"""
-    polite_keywords = ['please', 'may i', 'could you', 'would you', 'kindly', 'if you don\'t mind', 'can you', 'can i']
+    polite_keywords = ['please', 'may i', 'could you', 'would you', 'kindly', 'if you don\'t mind']
+    inappropriate_keywords = ['nude', 'naked', 'explicit', 'porn', 'xxx', 'adult']
     
     message_lower = message.lower()
-    print(f"Checking politeness for message: {message_lower}")
     
+    # Check for inappropriate content
+    if any(keyword in message_lower for keyword in inappropriate_keywords):
+        return False
     
     # Check for polite language
-    is_polite = any(keyword in message_lower for keyword in polite_keywords)
-    print(f"Message is polite: {is_polite}")
-    return is_polite
+    return any(keyword in message_lower for keyword in polite_keywords)
 
 def get_special_photo():
     """Get a random photo from the special photos directory"""
     try:
         photos_dir = os.path.join('static', 'nudepix')
-        print(f"Looking for photos in directory: {photos_dir}")
-        
         if not os.path.exists(photos_dir):
-            print(f"Creating directory: {photos_dir}")
             os.makedirs(photos_dir)
             return None
         
         photos = [f for f in os.listdir(photos_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-        print(f"Found {len(photos)} photos in directory")
-        
         if not photos:
-            print("No photos found in directory")
             return None
         
         random_photo = random.choice(photos)
-        print(f"Selected photo: {random_photo}")
-        
-        # Use absolute path for the URL
-        photo_url = url_for('static', filename=f'nudepix/{random_photo}')
-        print(f"Generated URL: {photo_url}")
-        
-        return photo_url
+        return url_for('static', filename=f'nudepix/{random_photo}')
     except Exception as e:
         print(f"Error getting special photo: {str(e)}")
         return None
@@ -249,145 +220,127 @@ def get_conversation(conversation_id):
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    # Make the session permanent
+    session.permanent = True
+    
+    data = request.json
+    user_message = data.get('message', '')
+    
+    # Initialize conversations list if it doesn't exist
+    if 'conversations' not in session:
+        session['conversations'] = []
+    
+    # Get or create current conversation
+    current_conv = session.get('current_conversation')
+    if not current_conv:
+        current_conv = {
+            'id': str(random.randint(1000, 9999)),
+            'date': datetime.now().isoformat(),
+            'messages': [{"role": "system", "content": SYSTEM_MESSAGE}]
+        }
+        session['conversations'].append(current_conv)
+        session['current_conversation'] = current_conv
+    
+    # Add user message to conversation
+    current_conv['messages'].append({"role": "user", "content": user_message})
+    
     try:
-        # Make the session permanent
-        session.permanent = True
+        # Check if user is asking for a photo
+        photo_keywords = [
+            'photo', 'picture', 'image', 'selfie', 'show me',
+            'pic', 'pix', 'see your face', 'see you', 'look like',
+            'send me', 'share', 'show yourself', 'what do you look like',
+            'your face', 'your photo', 'your picture', 'your selfie',
+            'can i see', 'want to see', 'would love to see', 'show your face',
+            'send a photo', 'send a picture', 'send a selfie', 'send me a photo',
+            'send me a picture', 'send me a selfie', 'share a photo',
+            'share a picture', 'share a selfie', 'share your photo',
+            'share your picture', 'share your selfie', 'share your face'
+        ]
         
-        data = request.json
-        user_message = data.get('message', '')
+        special_photo_keywords = ['sexy', 'hot', 'beautiful', 'gorgeous', 'stunning', 'attractive']
         
-        # Initialize conversations list if it doesn't exist
-        if 'conversations' not in session:
-            session['conversations'] = []
+        is_photo_request = any(keyword in user_message.lower() for keyword in photo_keywords)
+        is_special_photo_request = any(keyword in user_message.lower() for keyword in special_photo_keywords)
+        is_new_photo_request = any(keyword in user_message.lower() for keyword in ['new photo', 'new picture', 'new image', 'generate', 'create', 'make a new', 'create a new'])
         
-        # Get or create current conversation
-        current_conv = session.get('current_conversation')
-        if not current_conv:
-            current_conv = {
-                'id': str(random.randint(1000, 9999)),
-                'date': datetime.now().isoformat(),
-                'messages': [{"role": "system", "content": SYSTEM_MESSAGE}]
-            }
-            session['conversations'].append(current_conv)
-            session['current_conversation'] = current_conv
-        
-        # Add user message to conversation
-        current_conv['messages'].append({"role": "user", "content": user_message})
-        
-        try:
-            # Check if user is asking for a photo
-            photo_keywords = [
-                'photo', 'picture', 'image', 'selfie', 'show me',
-                'pic', 'pix', 'see your face', 'see you', 'look like',
-                'send me', 'share', 'show yourself', 'what do you look like',
-                'your face', 'your photo', 'your picture', 'your selfie',
-                'can i see', 'want to see', 'would love to see', 'show your face',
-                'send a photo', 'send a picture', 'send a selfie', 'send me a photo',
-                'send me a picture', 'send me a selfie', 'share a photo',
-                'share a picture', 'share a selfie', 'share your photo',
-                'share your picture', 'share your selfie', 'share your face',
-                'show', 'send', 'share'  # Added more general keywords
-            ]
-            
-            special_photo_keywords = ['sexy', 'hot', 'beautiful', 'gorgeous', 'stunning', 'attractive', 'cute', 'pretty', 'nice', 'good']
-            
-            user_message_lower = user_message.lower()
-            is_photo_request = any(keyword in user_message_lower for keyword in photo_keywords)
-            is_special_photo_request = any(keyword in user_message_lower for keyword in special_photo_keywords)
-            print(f"User message: {user_message_lower}")
-            print(f"Photo request: {is_photo_request}, Special photo request: {is_special_photo_request}")
-            is_new_photo_request = any(keyword in user_message_lower for keyword in ['new photo', 'new picture', 'new image', 'generate', 'create', 'make a new', 'create a new'])
-            
-            if is_photo_request:
-                # Initialize or increment photo request counter
-                if 'photo_request_count' not in session:
-                    session['photo_request_count'] = 1
-                else:
-                    session['photo_request_count'] += 1
-                
-                count = session['photo_request_count']
-                
-                # Playful responses based on request count
-                if count == 1:
-                    bot_response = "Hmm, maybe if you ask nicely again... 😏"
-                elif count == 2:
-                    bot_response = "You're persistent, I like that! One more time and I might just share something special... 😉"
-                else:
-                    try:
-                        # First response to create suspense
-                        bot_response = "Hmm... let me find something special for you... 😊"
-                        
-                        # Add bot response to conversation
-                        current_conv['messages'].append({"role": "assistant", "content": bot_response})
-                        session['conversation_history'] = current_conv['messages']
-                        
-                        # Return first response
-                        response = jsonify({"response": bot_response})
-                        
-                        # Wait for 2 seconds to create suspense
-                        time.sleep(2)
-                        
-                        if is_special_photo_request and is_polite_request(user_message):
-                            print("Special photo request detected")
-                            # Get special photo for polite requests
-                            image_url = get_special_photo()
-                            print(f"Special photo URL: {image_url}")
-                            if not image_url:
-                                print("No special photo found, falling back to random photo")
-                                image_url = get_random_photo()
-                        elif is_new_photo_request:
-                            # Generate new photo using Replicate
-                            image_prompt = generate_image_prompt(user_message)
-                            output = generate_image(image_prompt)
-                            
-                            if output and isinstance(output, list) and len(output) > 0:
-                                image_url = output[0]
-                            else:
-                                image_url = get_random_photo()
-                        else:
-                            # Use random photo from static folder
-                            image_url = get_random_photo()
-                        
-                        if image_url:
-                            # Simple response for sharing the photo
-                            bot_response = f"Here you go! 😘\n[Image: {image_url}]"
-                        else:
-                            bot_response = "Oops, no photos right now! 😅"
-                    except Exception as e:
-                        print(f"Error in photo process: {str(e)}")
-                        bot_response = "Can't get a photo right now, sorry! 😅"
+        if is_photo_request:
+            # Initialize or increment photo request counter
+            if 'photo_request_count' not in session:
+                session['photo_request_count'] = 1
             else:
-                # Normal conversation response
+                session['photo_request_count'] += 1
+            
+            count = session['photo_request_count']
+            
+            # Playful responses based on request count
+            if count == 1:
+                bot_response = "Hmm, maybe if you ask nicely again... 😏"
+            elif count == 2:
+                bot_response = "You're persistent, I like that! One more time and I might just share something special... 😉"
+            else:
                 try:
-                    print("Attempting to create OpenAI chat completion...")
-                    response = openai.ChatCompletion.create(
-                        model="gpt-3.5-turbo",
-                        messages=current_conv['messages'],
-                        temperature=0.7,
-                        max_tokens=50
-                    )
-                    bot_response = response.choices[0].message.content
-                    print("Successfully got response from OpenAI")
+                    # First response to create suspense
+                    bot_response = "Hmm... let me find something special for you... 😊"
+                    
+                    # Add bot response to conversation
+                    current_conv['messages'].append({"role": "assistant", "content": bot_response})
+                    session['conversation_history'] = current_conv['messages']
+                    
+                    # Return first response
+                    response = jsonify({"response": bot_response})
+                    
+                    # Wait for 2 seconds to create suspense
+                    time.sleep(2)
+                    
+                    if is_special_photo_request and is_polite_request(user_message):
+                        # Get special photo for polite requests
+                        image_url = get_special_photo()
+                        if not image_url:
+                            image_url = get_random_photo()
+                    elif is_new_photo_request:
+                        # Generate new photo using Replicate
+                        image_prompt = generate_image_prompt(user_message)
+                        output = generate_image(image_prompt)
+                        
+                        if output and isinstance(output, list) and len(output) > 0:
+                            image_url = output[0]
+                        else:
+                            image_url = get_random_photo()
+                    else:
+                        # Use random photo from static folder
+                        image_url = get_random_photo()
+                    
+                    if image_url:
+                        # Simple response for sharing the photo
+                        bot_response = f"Here you go! 😘\n[Image: {image_url}]"
+                    else:
+                        bot_response = "Oops, no photos right now! 😅"
                 except Exception as e:
-                    print(f"Error in OpenAI API call: {str(e)}")
-                    raise
-            
-            # Add bot response to conversation
-            current_conv['messages'].append({"role": "assistant", "content": bot_response})
-            
-            # Update session
-            session['conversations'] = session['conversations']
-            session['current_conversation'] = current_conv
-            
-            return jsonify({"response": bot_response})
-            
-        except Exception as e:
-            print(f"Error in chat process: {str(e)}")
-            return jsonify({"error": str(e)}), 500
-            
+                    print(f"Error in photo process: {str(e)}")
+                    bot_response = "Can't get a photo right now, sorry! 😅"
+        else:
+            # Normal conversation response - keep it short
+            response = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=current_conv['messages'],
+                temperature=0.7,
+                max_tokens=50  # Reduced for shorter responses
+            )
+            bot_response = response.choices[0].message.content
+        
+        # Add bot response to conversation
+        current_conv['messages'].append({"role": "assistant", "content": bot_response})
+        
+        # Update session
+        session['conversations'] = session['conversations']
+        session['current_conversation'] = current_conv
+        
+        return jsonify({"response": bot_response})
+    
     except Exception as e:
-        print(f"Error in chat route: {str(e)}")
+        print(f"Error in chat process: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(port=5050, debug=True)  # Added debug=True for better error messages
+    app.run(port=5050)

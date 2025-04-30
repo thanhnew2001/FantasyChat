@@ -1,61 +1,43 @@
-# FantasyChat
+# Luna Chatbot
 
-A Flask-based chatbot application featuring Luna, a friendly AI companion.
-
-## Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/FantasyChat.git
-cd FantasyChat
-```
-
-2. Create a virtual environment and activate it:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Set up environment variables:
-   - Copy `.env.example` to `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit `.env` and add your API keys:
-     ```
-     OPENAI_API_KEY=your_openai_api_key_here
-     REPLICATE_API_TOKEN=your_replicate_api_token_here
-     ```
-
-5. Run the application:
-```bash
-python app.py
-```
-
-## Environment Variables
-
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `REPLICATE_API_TOKEN`: Your Replicate API token
-- `FLASK_SECRET_KEY`: (Optional) Flask secret key for session management
-
-## Security Notes
-
-- Never commit your `.env` file to version control
-- Keep your API keys secure and don't share them
-- The `.env` file is already in `.gitignore`
+A friendly and engaging chatbot with a female persona, built using Flask and OpenAI's GPT-3.5 API.
 
 ## Features
 
-- Interactive chat interface
-- Image generation capabilities
-- Conversation history
+- Modern and attractive chat interface
+- Real-time message updates
+- Typing indicators
 - Responsive design
+- Engaging conversation with a friendly female persona
 
-## License
+## Setup
 
-MIT License 
+1. Clone this repository
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Create a `.env` file in the root directory and add your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your_api_key_here
+   ```
+5. Run the application:
+   ```bash
+   python app.py
+   ```
+6. Open your browser and navigate to `http://localhost:5000`
+
+## Usage
+
+- Type your message in the input field
+- Press Enter or click the Send button to send your message
+- The chatbot will respond with engaging and friendly messages
+
+## Note
+
+Make sure to keep your OpenAI API key secure and never share it publicly. 
