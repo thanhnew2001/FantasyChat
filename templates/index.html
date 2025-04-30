@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Luna</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 90%;
+            max-width: 800px;
+            height: 80vh;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #ff69b4;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid white;
+            object-fit: cover;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.bot {
+            align-items: flex-start;
+            display: flex;
+            gap: 10px;
+        }
+
+        .bot-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            margin-top: 5px;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 20px;
+            border-radius: 20px;
+            font-size: 1em;
+            line-height: 1.4;
+        }
+
+        .user .message-content {
+            background: #ff69b4;
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot .message-content {
+            background: #f0f0f0;
+            color: #333;
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-image {
+            max-width: 300px;
+            border-radius: 10px;
+            margin-top: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: #f8f8f8;
+            display: flex;
+            gap: 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 1em;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #message-input:focus {
+            border-color: #ff69b4;
+        }
+
+        #send-button {
+            background: #ff69b4;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+
+        #send-button:hover {
+            background: #ff1493;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 12px 20px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            align-self: flex-start;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background: #666;
+            display: inline-block;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: typing 1s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .sidebar {
+            width: 250px;
+            border-right: 1px solid #e4e6eb;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px 0 0 10px;
+        }
+
+        .history-button {
+            width: 100%;
+            margin-bottom: 10px;
+            background-color: #e4e6eb;
+            color: #1c1e21;
+        }
+
+        .history-button:hover {
+            background-color: #d8dadf;
+        }
+
+        .history-list {
+            margin-top: 20px;
+        }
+
+        .history-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: white;
+            border-radius: 5px;
+            cursor: pointer;
+            border: 1px solid #e4e6eb;
+        }
+
+        .history-item:hover {
+            background: #f0f2f5;
+        }
+
+        .history-date {
+            font-size: 0.8em;
+            color: #65676b;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <img src="/static/luna.webp" alt="Luna" class="avatar">
+            Chat with Luna 💕
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot">
+                <img src="/static/luna.webp" alt="Luna" class="bot-avatar">
+                <div class="message-content">
+                    Hi there! I'm Luna 👋 I'm excited to chat with you! How are you doing today?
+                </div>
+            </div>
+        </div>
+        <div class="typing-indicator" id="typing-indicator" style="display: none;">
+            <img src="/static/luna.webp" alt="Luna" class="bot-avatar">
+            <div class="message-content">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <button class="history-button" onclick="loadConversationHistory()">Load Past Conversations</button>
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const chatMessages = document.getElementById('chat-messages');
+        const typingIndicator = document.getElementById('typing-indicator');
+
+        // Initialize localStorage if not exists
+        if (!localStorage.getItem('conversations')) {
+            localStorage.setItem('conversations', JSON.stringify([]));
+        }
+
+        // Load initial conversation if exists
+        const currentConversationId = localStorage.getItem('currentConversationId');
+        if (currentConversationId) {
+            loadConversation(currentConversationId);
+        }
+
+        function saveConversation(conversation) {
+            const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+            const existingIndex = conversations.findIndex(c => c.id === conversation.id);
+            
+            if (existingIndex !== -1) {
+                conversations[existingIndex] = conversation;
+            } else {
+                conversations.push(conversation);
+            }
+            
+            localStorage.setItem('conversations', JSON.stringify(conversations));
+            localStorage.setItem('currentConversationId', conversation.id);
+        }
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            if (!isUser) {
+                const avatar = document.createElement('img');
+                avatar.src = '/static/luna.webp';
+                avatar.alt = 'Luna';
+                avatar.className = 'bot-avatar';
+                messageDiv.appendChild(avatar);
+            }
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            
+            // Check if the content contains an image
+            if (content.includes('[Image:')) {
+                const [text, imageUrl] = content.split('[Image:');
+                messageContent.textContent = text.trim();
+                
+                const img = document.createElement('img');
+                img.src = imageUrl.replace(']', '').trim();
+                img.className = 'chat-image';
+                img.alt = 'Generated image';
+                messageDiv.appendChild(img);
+            } else {
+                messageContent.textContent = content;
+            }
+            
+            messageDiv.appendChild(messageContent);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Save message to localStorage
+            const currentConversationId = localStorage.getItem('currentConversationId');
+            if (currentConversationId) {
+                const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+                const conversation = conversations.find(c => c.id === currentConversationId);
+                if (conversation) {
+                    conversation.messages.push({
+                        content: content,
+                        isUser: isUser,
+                        timestamp: new Date().toISOString()
+                    });
+                    saveConversation(conversation);
+                }
+            }
+        }
+
+        function showTypingIndicator() {
+            typingIndicator.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.style.display = 'none';
+        }
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Add user message
+            addMessage(message, true);
+            messageInput.value = '';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                const data = await response.json();
+                
+                // Hide typing indicator
+                hideTypingIndicator();
+
+                if (data.error) {
+                    addMessage('Sorry, I encountered an error. Please try again.');
+                } else {
+                    addMessage(data.response);
+                }
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('Sorry, I encountered an error. Please try again.');
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function loadConversationHistory() {
+            const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+            const historyList = document.getElementById('historyList');
+            historyList.innerHTML = '';
+            
+            conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                
+                // Get first user message as preview
+                const preview = conv.messages.find(m => m.isUser)?.content || 'No messages';
+                
+                item.innerHTML = `
+                    <div>${preview.length > 50 ? preview.substring(0, 50) + '...' : preview}</div>
+                    <div class="history-date">${new Date(conv.date).toLocaleString()}</div>
+                `;
+                item.onclick = () => loadConversation(conv.id);
+                historyList.appendChild(item);
+            });
+        }
+
+        function loadConversation(conversationId) {
+            const conversations = JSON.parse(localStorage.getItem('conversations') || '[]');
+            const conversation = conversations.find(c => c.id === conversationId);
+            
+            if (conversation) {
+                const messagesDiv = document.getElementById('chat-messages');
+                messagesDiv.innerHTML = '';
+                
+                conversation.messages.forEach(msg => {
+                    addMessage(msg.content, msg.isUser);
+                });
+                
+                localStorage.setItem('currentConversationId', conversationId);
+            }
+        }
+
+        // Add new conversation button
+        const newChatButton = document.createElement('button');
+        newChatButton.className = 'history-button';
+        newChatButton.textContent = 'New Chat';
+        newChatButton.onclick = () => {
+            const newConversation = {
+                id: Date.now().toString(),
+                date: new Date().toISOString(),
+                messages: []
+            };
+            saveConversation(newConversation);
+            chatMessages.innerHTML = '';
+            localStorage.setItem('currentConversationId', newConversation.id);
+        };
+        document.querySelector('.sidebar').insertBefore(newChatButton, document.querySelector('.history-button'));
+    </script>
+</body>
+</html> 
