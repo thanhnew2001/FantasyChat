@@ -398,6 +398,6 @@ def test_openai_connection():
 # Test connection on startup
 if __name__ == '__main__':
     if test_openai_connection():
-        app.run(debug=True)
+        app.run(debug=True, port=5050)
     else:
         print("Failed to connect to OpenAI API. Please check your API key and network settings.")
