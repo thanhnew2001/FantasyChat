@@ -36,7 +36,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(255, 192, 203, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             z-index: 1;
         }
 
@@ -48,7 +48,7 @@
         }
 
         .chat-header {
-            background: rgba(255, 105, 180, 0.9);
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
             padding: 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
@@ -143,7 +143,10 @@
             height: calc(100vh - 200px);
             overflow-y: auto;
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.7);
+            background-color: rgba(255, 255, 255, 0.7);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
             display: none;
             margin-bottom: 60px;
         }
@@ -157,7 +160,7 @@
         }
 
         .user-message {
-            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
             color: white;
             margin-left: auto;
         }
@@ -180,7 +183,8 @@
             left: 0;
             right: 0;
             padding: 1rem;
-            background: rgba(255, 105, 180, 0.9);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
             z-index: 3;
             display: none;
         }
@@ -194,7 +198,7 @@
         }
 
         #user-input::placeholder {
-            color: #ff69b4;
+            color: #aaa;
         }
 
         #user-input:focus {
@@ -204,7 +208,7 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 100%);
+            background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
             border: none;
             border-radius: 20px;
             padding: 0.8rem 1.5rem;
@@ -214,7 +218,7 @@
         }
 
         .btn-primary:hover {
-            background: linear-gradient(135deg, #ff1493 0%, #ff69b4 100%);
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
         }
@@ -367,7 +371,7 @@
 
         /* Add styles for narrative text */
         .narrative {
-            color: #666;
+            color: #000;
             font-style: italic;
             margin: 8px 0;
             line-height: 1.4;
@@ -381,6 +385,10 @@
         .message-content p {
             margin: 8px 0;
             line-height: 1.4;
+        }
+
+        .bot-message {
+            color: #9b59b6;
         }
     </style>
 </head>
@@ -426,24 +434,56 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        // Parse HTML into array of tags and characters
+        function parseHTML(html) {
+            const parts = html.match(/<[^>]+>|[^<]+/g) || [];
+            return parts.flatMap(part => part.startsWith('<') ? [part] : part.split(''));
+        }
+
+        // Typewriter effect: reveal tokens one by one
+        function typeWriter(element, html, speed = 30) {
+            element.innerHTML = '';
+            const tokens = parseHTML(html);
+            let i = 0;
+            function type() {
+                if (i < tokens.length) {
+                    element.innerHTML += tokens[i++];
+                    scrollToBottom();
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
         function appendMessage(message, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-            
+
+            // Wrap narrative text (*) in a span for styling
+            let html = message.replace(/\*(.*?)\*/g, '<span class="narrative">$1</span>');
             // Convert URLs to clickable links
-            const processedMessage = message.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
-            
-            messageDiv.innerHTML = processedMessage.replace(/\n/g, '<br>');
+            html = html.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+            // Preserve line breaks
+            html = html.replace(/\n/g, '<br>');
+
             document.getElementById('chat-messages').appendChild(messageDiv);
-            scrollToBottom();
+            if (isUser) {
+                // User messages show instantly
+                messageDiv.innerHTML = html;
+                scrollToBottom();
+            } else {
+                // Bot messages type out gradually
+                typeWriter(messageDiv, html, 20);
+            }
         }
 
         function updateBackground() {
-            const container = document.getElementById('chat-container');
+            const messagesDiv = document.getElementById('chat-messages');
             if (currentCharacter) {
-                container.style.backgroundImage = `url(/static/${characters[currentCharacter].background})`;
+                // Set character avatar as background in the messages pane
+                messagesDiv.style.backgroundImage = `url(/static/${characters[currentCharacter].avatar})`;
             } else {
-                container.style.backgroundImage = 'none';
+                messagesDiv.style.backgroundImage = 'none';
             }
         }
 
@@ -499,33 +539,39 @@
             });
 
             $('#send-button').click(function() {
-                if (!currentCharacter) return;
-                
                 const userInput = $('#user-input').val().trim();
-                if (userInput) {
-                    appendMessage(userInput, true);
-                    $('#user-input').val('');
-                    $('.loading').show();
-
-                    $.ajax({
-                        url: '/chat',
-                        method: 'POST',
-                        contentType: 'application/json',
-                        data: JSON.stringify({
-                            message: userInput,
-                            character_id: currentCharacter
-                        }),
-                        success: function(response) {
-                            $('.loading').hide();
-                            appendMessage(response.response);
-                        },
-                        error: function(error) {
-                            $('.loading').hide();
-                            console.error('Error:', error);
-                            appendMessage('Sorry, something went wrong. Please try again.');
-                        }
-                    });
-                }
+                if (!currentCharacter || !userInput) return;
+                // Get and update history in localStorage
+                const histKey = 'history_' + currentCharacter;
+                let history = JSON.parse(localStorage.getItem(histKey) || '[]');
+                history.push({role: 'user', content: userInput});
+                localStorage.setItem(histKey, JSON.stringify(history));
+                appendMessage(userInput, true);
+                $('#user-input').val('');
+                $('.loading').show();
+                // Send message and history
+                $.ajax({
+                    url: '/chat',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        message: userInput,
+                        character_id: currentCharacter,
+                        history: history
+                    }),
+                    success: function(response) {
+                        $('.loading').hide();
+                        // Append assistant reply and update localStorage
+                        appendMessage(response.response);
+                        history.push({role: 'assistant', content: response.response});
+                        localStorage.setItem(histKey, JSON.stringify(history));
+                    },
+                    error: function(error) {
+                        $('.loading').hide();
+                        console.error('Error:', error);
+                        appendMessage('Sorry, something went wrong. Please try again.');
+                    }
+                });
             });
         });
 
