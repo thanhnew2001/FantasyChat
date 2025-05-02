@@ -55,9 +55,10 @@
         }
 
         .character-select {
-            display: flex;
-            gap: 1rem;
-            overflow-x: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            overflow-y: auto;
             padding: 1rem;
             background: rgba(255, 182, 193, 0.7);
             transition: all 0.3s ease;
@@ -65,6 +66,8 @@
             top: 60px; /* Height of the header */
             left: 0;
             right: 0;
+            bottom: 0;
+            height: calc(100vh - 60px);
             z-index: 4;
         }
 
@@ -102,14 +105,46 @@
         }
 
         .character-card {
-            flex: 0 0 auto;
-            width: 150px;
+            width: 100%;
+            height: 500px;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 10px;
             padding: 0.5rem;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .character-card img {
+            width: 100%;
+            height: 350px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .character-info {
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 0 0 5px 5px;
+            flex: 1;
+        }
+
+        .character-info h5 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #8e44ad;
+        }
+
+        .character-info p {
+            font-size: 0.9rem;
+            color: #4a4a4a;
+            line-height: 1.4;
+            margin: 0;
         }
 
         .character-card:hover {
@@ -122,21 +157,6 @@
             border: 2px solid #ff69b4;
             background: rgba(255, 255, 255, 0.5);
             box-shadow: 0 5px 15px rgba(255, 105, 180, 0.4);
-        }
-
-        .character-card img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 5px;
-            margin-bottom: 0.5rem;
-        }
-
-        .character-card h5 {
-            margin: 0;
-            text-align: center;
-            color: #4a4a4a;
-            font-weight: 600;
         }
 
         #chat-messages {
@@ -390,6 +410,20 @@
         .bot-message {
             color: #9b59b6;
         }
+
+        .background-info {
+            background: rgba(155, 89, 182, 0.1);
+            border-left: 3px solid #9b59b6;
+            margin-bottom: 1rem;
+            padding: 1rem;
+        }
+        
+        .background-info .narrative {
+            color: #9b59b6;
+            font-style: italic;
+            background: none;
+            padding: 0;
+        }
     </style>
 </head>
 <body>
@@ -404,7 +438,10 @@
                 {% for id, char in characters.items() %}
                 <div class="character-card" data-character="{{ id }}">
                     <img src="{{ url_for('static', filename=char.avatar) }}" alt="{{ char.name }}">
-                    <h5>{{ char.name }}</h5>
+                    <div class="character-info">
+                        <h5>{{ char.name }}</h5>
+                        <p>{{ char.background_info }}</p>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -434,27 +471,6 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // Parse HTML into array of tags and characters
-        function parseHTML(html) {
-            const parts = html.match(/<[^>]+>|[^<]+/g) || [];
-            return parts.flatMap(part => part.startsWith('<') ? [part] : part.split(''));
-        }
-
-        // Typewriter effect: reveal tokens one by one
-        function typeWriter(element, html, speed = 30) {
-            element.innerHTML = '';
-            const tokens = parseHTML(html);
-            let i = 0;
-            function type() {
-                if (i < tokens.length) {
-                    element.innerHTML += tokens[i++];
-                    scrollToBottom();
-                    setTimeout(type, speed);
-                }
-            }
-            type();
-        }
-
         function appendMessage(message, isUser = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
@@ -464,17 +480,9 @@
             // Convert URLs to clickable links
             html = html.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
             // Preserve line breaks
-            html = html.replace(/\n/g, '<br>');
-
+            messageDiv.innerHTML = html.replace(/\n/g, '<br>');
             document.getElementById('chat-messages').appendChild(messageDiv);
-            if (isUser) {
-                // User messages show instantly
-                messageDiv.innerHTML = html;
-                scrollToBottom();
-            } else {
-                // Bot messages type out gradually
-                typeWriter(messageDiv, html, 20);
-            }
+            scrollToBottom();
         }
 
         function updateBackground() {
@@ -489,8 +497,21 @@
 
         function showWelcomeMessage() {
             if (currentCharacter) {
+                // First show background info
+                const backgroundInfo = characters[currentCharacter].background_info;
                 const welcomeMessage = characters[currentCharacter].welcome_message;
+                
+                // Create a special background info message
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'message bot-message background-info';
+                infoDiv.innerHTML = `<div class="narrative">${backgroundInfo}</div>`;
+                document.getElementById('chat-messages').appendChild(infoDiv);
+                
+                // Then show the welcome message
                 appendMessage(welcomeMessage);
+                
+                // Scroll to bottom after both messages
+                scrollToBottom();
             }
         }
 
@@ -516,6 +537,10 @@
                 document.querySelectorAll('.character-card').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
                 currentCharacter = characterId;
+                
+                // Clear previous chat history when selecting a new character
+                localStorage.removeItem('history_' + characterId);
+                
                 updateBackground();
                 hideCharacterSelect();
                 showWelcomeMessage();
@@ -541,14 +566,24 @@
             $('#send-button').click(function() {
                 const userInput = $('#user-input').val().trim();
                 if (!currentCharacter || !userInput) return;
+                
                 // Get and update history in localStorage
                 const histKey = 'history_' + currentCharacter;
-                let history = JSON.parse(localStorage.getItem(histKey) || '[]');
+                // Initialize or get existing history
+                let history = [];
+                try {
+                    history = JSON.parse(localStorage.getItem(histKey) || '[]');
+                } catch (e) {
+                    console.error('Error parsing history:', e);
+                }
+
                 history.push({role: 'user', content: userInput});
                 localStorage.setItem(histKey, JSON.stringify(history));
+                
                 appendMessage(userInput, true);
                 $('#user-input').val('');
                 $('.loading').show();
+
                 // Send message and history
                 $.ajax({
                     url: '/chat',
@@ -561,7 +596,6 @@
                     }),
                     success: function(response) {
                         $('.loading').hide();
-                        // Append assistant reply and update localStorage
                         appendMessage(response.response);
                         history.push({role: 'assistant', content: response.response});
                         localStorage.setItem(histKey, JSON.stringify(history));
