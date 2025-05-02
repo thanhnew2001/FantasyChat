@@ -52,6 +52,27 @@
             padding: 1rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.3);
             color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .admin-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .admin-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+            color: white;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
         }
 
         .character-select {
@@ -427,11 +448,15 @@
     </style>
 </head>
 <body>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
     <div class="chat-container" id="chat-container" data-characters='{{ characters | tojson | safe }}'>
         <button class="back-button" id="back-button">← Back to Characters</button>
         <div class="chat-content">
             <div class="chat-header">
-                <h2 class="text-center mb-0">Fantasy Chat</h2>
+                <h2 class="mb-0">Fantasy Chat</h2>
+                <a href="/admin" target="_blank" class="admin-button">
+                    <i class="fas fa-cog"></i> Admin Panel
+                </a>
             </div>
             
             <div class="character-select" id="character-select">

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantasy Chat Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .character-form {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .preview-image {
+            max-width: 200px;
+            max-height: 200px;
+            object-fit: cover;
+            margin: 10px 0;
+        }
+        .character-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        textarea {
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <h1 class="mb-4">Character Management</h1>
+        
+        <!-- Add New Character Form -->
+        <div class="character-form mb-5">
+            <h3>Add New Character</h3>
+            <form id="newCharacterForm" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Character ID</label>
+                    <input type="text" class="form-control" name="id" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" name="name" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Avatar Image</label>
+                    <input type="file" class="form-control" name="avatar" accept="image/*" required>
+                    <img class="preview-image d-none" id="avatarPreview">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Background Image</label>
+                    <input type="file" class="form-control" name="background" accept="image/*" required>
+                    <img class="preview-image d-none" id="backgroundPreview">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Background Info</label>
+                    <textarea class="form-control" name="background_info" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Welcome Message</label>
+                    <textarea class="form-control" name="welcome_message" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">System Message</label>
+                    <textarea class="form-control" name="system_message" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Character</button>
+            </form>
+        </div>
+
+        <!-- Existing Characters -->
+        <h3>Existing Characters</h3>
+        <div id="charactersList">
+            <!-- Characters will be loaded here -->
+        </div>
+    </div>
+
+    <script>
+        // Preview images before upload
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('d-none');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Load existing characters
+        async function loadCharacters() {
+            try {
+                const response = await fetch('/admin/characters');
+                const characters = await response.json();
+                const container = document.getElementById('charactersList');
+                container.innerHTML = '';
+
+                for (const [id, char] of Object.entries(characters)) {
+                    const charDiv = document.createElement('div');
+                    charDiv.className = 'character-card';
+                    charDiv.innerHTML = `
+                        <form class="edit-character-form" data-id="${id}">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h4>${char.name}</h4>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteCharacter('${id}')">Delete</button>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <img src="/static/${char.avatar}" class="preview-image">
+                                    <input type="file" class="form-control mt-2" name="avatar" accept="image/*">
+                                </div>
+                                <div class="col-md-6">
+                                    <img src="/static/${char.background}" class="preview-image">
+                                    <input type="file" class="form-control mt-2" name="background" accept="image/*">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Background Info</label>
+                                <textarea class="form-control" name="background_info">${char.background_info}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Welcome Message</label>
+                                <textarea class="form-control" name="welcome_message">${char.welcome_message}</textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">System Message</label>
+                                <textarea class="form-control" name="system_message">${char.system_message}</textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Update</button>
+                        </form>
+                    `;
+                    container.appendChild(charDiv);
+                }
+
+                // Add event listeners for edit forms
+                document.querySelectorAll('.edit-character-form').forEach(form => {
+                    form.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const id = form.dataset.id;
+                        const formData = new FormData(form);
+                        try {
+                            const response = await fetch(`/admin/characters/${id}`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            if (response.ok) {
+                                alert('Character updated successfully!');
+                                loadCharacters();
+                            } else {
+                                alert('Error updating character');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            alert('Error updating character');
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Delete character
+        async function deleteCharacter(id) {
+            if (confirm('Are you sure you want to delete this character?')) {
+                try {
+                    const response = await fetch(`/admin/characters/${id}`, {
+                        method: 'DELETE'
+                    });
+                    if (response.ok) {
+                        alert('Character deleted successfully!');
+                        loadCharacters();
+                    } else {
+                        alert('Error deleting character');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Error deleting character');
+                }
+            }
+        }
+
+        // Handle new character form submission
+        document.getElementById('newCharacterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            try {
+                const response = await fetch('/admin/characters', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (response.ok) {
+                    alert('Character added successfully!');
+                    e.target.reset();
+                    document.getElementById('avatarPreview').classList.add('d-none');
+                    document.getElementById('backgroundPreview').classList.add('d-none');
+                    loadCharacters();
+                } else {
+                    alert('Error adding character');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error adding character');
+            }
+        });
+
+        // Image preview handlers
+        document.querySelector('input[name="avatar"]').addEventListener('change', function() {
+            previewImage(this, 'avatarPreview');
+        });
+        document.querySelector('input[name="background"]').addEventListener('change', function() {
+            previewImage(this, 'backgroundPreview');
+        });
+
+        // Load characters when page loads
+        loadCharacters();
+    </script>
+</body>
+</html> 
