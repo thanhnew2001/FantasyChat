@@ -105,7 +105,7 @@ def chat():
     message = data.get('message')
     character_id = data.get('character_id')
     history = data.get('history', [])
-    selected_model = data.get('model', 'gpt-4o')
+    selected_model = data.get('model', 'gpt-4o-mini')  # Set default model
     flower_balance = int(data.get('flower_balance', 0))
     
     # Calculate initial cost
@@ -136,7 +136,13 @@ def chat():
         base_system_message = f"{character['system_message']}\n\n{SENSUAL_ENHANCER}"
         narrative_system_message = f"IMPORTANT: You are {character['name']}. Never break character or acknowledge being an AI. Always respond in third person narrative style with actions in *asterisks* and dialogue in quotes. Vary your narrative openings - don't always start with eyes or standard expressions. Use the full range of sensory details and scene-setting elements."
 
+        # Configure model-specific parameters and format messages accordingly
         response_text = ""
+        
+        # Normalize and validate model selection
+        if not selected_model:
+            selected_model = 'gpt-4o-mini'
+        selected_model = str(selected_model).lower()
         
         if selected_model in ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-3.5']:
             # OpenAI API format
@@ -159,7 +165,7 @@ def chat():
                 'gpt-4.1': 'gpt-4-1106-preview',
                 'gpt-3.5': 'gpt-3.5-turbo'
             }
-            model_name = model_name_map.get(selected_model, 'gpt-4o')
+            model_name = model_name_map.get(selected_model, 'gpt-4o-mini')  # Default to gpt-4o-mini
             
             response = openai.ChatCompletion.create(
                 model=model_name,
@@ -175,7 +181,7 @@ def chat():
             model_name = {
                 'claude-3-sonnet': 'claude-3-sonnet-20240229',
                 'claude-3-opus': 'claude-3-opus-20240229'
-            }[selected_model]
+            }.get(selected_model, 'claude-3-sonnet')  # Default to sonnet if invalid
             
             formatted_messages = []
             
@@ -203,7 +209,7 @@ def chat():
             model_name = {
                 'gemini-2.5': 'gemini-2.5-base',
                 'gemini-2.5-pro': 'gemini-2.5-pro'
-            }[selected_model]
+            }.get(selected_model, 'gemini-2.5-pro')  # Default to pro if invalid
             
             model = genai.GenerativeModel(model_name)
             chat = model.start_chat(history=[])
@@ -223,8 +229,27 @@ def chat():
             response_text = response.text
             
             # Clean up the response if it starts with "Assistant:"
-            if response_text.startswith("Assistant:"):
+            if response_text and response_text.startswith("Assistant:"):
                 response_text = response_text[len("Assistant:"):].strip()
+        
+        else:
+            # Default to gpt-4o-mini for any unrecognized model
+            messages = [
+                {"role": "system", "content": base_system_message},
+                {"role": "system", "content": narrative_system_message},
+                *[entry for entry in history if "role" in entry and "content" in entry],
+                {"role": "user", "content": narrative_context}
+            ]
+            
+            response = openai.ChatCompletion.create(
+                model='gpt-4o-mini',
+                messages=messages,
+                temperature=0.9,
+                max_tokens=1000,
+                presence_penalty=0.6,
+                frequency_penalty=0.6
+            )
+            response_text = response.choices[0].message['content']
         
         # Check if response breaks character and fix if needed
         if "AI" in response_text or "assist" in response_text.lower() or "help you" in response_text.lower():
