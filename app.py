@@ -6,6 +6,11 @@ from dotenv import load_dotenv
 from datetime import datetime
 from werkzeug.utils import secure_filename
 import shutil
+import anthropic
+from anthropic import Anthropic
+import google.generativeai as genai
+from functools import wraps
+import re
 
 # Load environment variables
 load_dotenv()
@@ -15,8 +20,10 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'supersecretkey')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = 'static/avatars'
 
-# Configure OpenAI
+# Configure API keys and clients
 openai.api_key = os.getenv('OPENAI_API_KEY')
+anthropic = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 
 # Ensure upload directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -68,6 +75,26 @@ def get_system_message(character_id="luna"):
     base_message = CHARACTERS[character_id]["system_message"]
     return f"{base_message}\n\n{SENSUAL_ENHANCER}"
 
+# Add cost calculation helper
+def calculate_message_cost(message, response):
+    base_cost = 1
+    
+    # Patterns for different content types
+    sensitive_pattern = r'\b(kiss|touch|feel|body|intimate)\b'
+    flirting_pattern = r'\b(flirt|wink|tease|playful|naughty)\b'
+    
+    # Check both message and response
+    full_text = (message + " " + response).lower()
+    
+    # Calculate additional costs
+    if re.search(sensitive_pattern, full_text, re.IGNORECASE):
+        base_cost += 2
+    
+    if re.search(flirting_pattern, full_text, re.IGNORECASE):
+        base_cost += 1
+    
+    return base_cost
+
 @app.route('/')
 def home():
     return render_template('index.html', characters=CHARACTERS)
@@ -75,47 +102,145 @@ def home():
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.json
-    user_message = data.get('message', '')
-    character_id = data.get('character_id', 'luna')
+    message = data.get('message')
+    character_id = data.get('character_id')
+    history = data.get('history', [])
+    selected_model = data.get('model', 'gpt-4o')
+    flower_balance = int(data.get('flower_balance', 0))
     
+    # Calculate initial cost
+    initial_cost = calculate_message_cost(message, "")
+    
+    if flower_balance < initial_cost:
+        return jsonify({
+            'error': 'Insufficient flowers',
+            'required_cost': initial_cost
+        }), 402
+    
+    if not message or not character_id:
+        return jsonify({'error': 'Missing message or character_id'}), 400
+
     try:
-        # Build messages list using client-provided history to preserve context
-        history = data.get('history', [])
+        with open('characters.json', 'r') as f:
+            characters = json.load(f)
+            
+        if character_id not in characters:
+            return jsonify({'error': 'Character not found'}), 404
+            
+        character = characters[character_id]
         
-        # Add narrative context reminder to user's message
-        narrative_context = f"[Remember to stay in character and maintain the narrative style. Describe {CHARACTERS[character_id]['name']}'s actions, expressions, and surroundings in third person, using *asterisks* for actions and quotes for dialogue. Never break character or acknowledge being an AI. Vary your narrative openings and scene descriptions to avoid repetition.]\n\nUser: {user_message}"
+        # Add narrative context to user's message
+        narrative_context = f"[Remember to stay in character and maintain the narrative style. Describe {character['name']}'s actions, expressions, and surroundings in third person, using *asterisks* for actions and quotes for dialogue. Never break character or acknowledge being an AI. Vary your narrative openings and scene descriptions to avoid repetition.]\n\nUser: {message}"
         
-        # Always include system message at the start of every exchange
-        messages = [
-            {"role": "system", "content": get_system_message(character_id)},
-            {"role": "system", "content": f"IMPORTANT: You are {CHARACTERS[character_id]['name']}. Never break character or acknowledge being an AI. Always respond in third person narrative style with actions in *asterisks* and dialogue in quotes. Vary your narrative openings - don't always start with eyes or standard expressions. Use the full range of sensory details and scene-setting elements."},
-            *history,  # Unpack existing history
-            {"role": "user", "content": narrative_context}
-        ]
+        # Base system message with character info and narrative requirements
+        base_system_message = f"{character['system_message']}\n\n{SENSUAL_ENHANCER}"
+        narrative_system_message = f"IMPORTANT: You are {character['name']}. Never break character or acknowledge being an AI. Always respond in third person narrative style with actions in *asterisks* and dialogue in quotes. Vary your narrative openings - don't always start with eyes or standard expressions. Use the full range of sensory details and scene-setting elements."
+
+        response_text = ""
         
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=messages,
-            temperature=0.9,  # Increase creativity
-            max_tokens=300,   # Allow for longer, more detailed responses
-            presence_penalty=0.6,  # Encourage more varied responses
-            frequency_penalty=0.6  # Discourage repetitive responses
-        )
-        bot_response = response.choices[0].message.content
+        if selected_model in ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-3.5']:
+            # OpenAI API format
+            messages = [
+                {"role": "system", "content": base_system_message},
+                {"role": "system", "content": narrative_system_message}
+            ]
+            
+            # Add chat history
+            for entry in history:
+                if "role" in entry and "content" in entry:
+                    messages.append(entry)
+            
+            # Add the new message with narrative context
+            messages.append({"role": "user", "content": narrative_context})
+            
+            model_name_map = {
+                'gpt-4o': 'gpt-4o',
+                'gpt-4o-mini': 'gpt-4o-mini',
+                'gpt-4.1': 'gpt-4-1106-preview',
+                'gpt-3.5': 'gpt-3.5-turbo'
+            }
+            model_name = model_name_map.get(selected_model, 'gpt-4o')
+            
+            response = openai.ChatCompletion.create(
+                model=model_name,
+                messages=messages,
+                temperature=0.9,  # Increase creativity
+                max_tokens=1000,
+                presence_penalty=0.6,  # Encourage more varied responses
+                frequency_penalty=0.6  # Discourage repetitive responses
+            )
+            response_text = response.choices[0].message['content']
+            
+        elif selected_model.startswith('claude-3'):
+            model_name = {
+                'claude-3-sonnet': 'claude-3-sonnet-20240229',
+                'claude-3-opus': 'claude-3-opus-20240229'
+            }[selected_model]
+            
+            formatted_messages = []
+            
+            # Add chat history
+            for entry in history:
+                if "role" in entry and "content" in entry:
+                    formatted_messages.append({
+                        "role": entry["role"],
+                        "content": entry["content"]
+                    })
+            
+            response = anthropic.messages.create(
+                model=model_name,
+                max_tokens=4096,
+                temperature=0.9,
+                system=f"{base_system_message}\n\n{narrative_system_message}",
+                messages=[
+                    *formatted_messages,
+                    {"role": "user", "content": narrative_context}
+                ]
+            )
+            response_text = response.content
+            
+        elif selected_model.startswith('gemini-2.5'):
+            model_name = {
+                'gemini-2.5': 'gemini-2.5-base',
+                'gemini-2.5-pro': 'gemini-2.5-pro'
+            }[selected_model]
+            
+            model = genai.GenerativeModel(model_name)
+            chat = model.start_chat(history=[])
+            
+            # Send system messages
+            chat.send_message(f"System: {base_system_message}")
+            chat.send_message(f"System: {narrative_system_message}")
+            
+            # Add chat history
+            for entry in history:
+                if "role" in entry and "content" in entry:
+                    prefix = "User: " if entry["role"] == "user" else "Assistant: "
+                    chat.send_message(f"{prefix}{entry['content']}")
+            
+            # Send the narrative context
+            response = chat.send_message(narrative_context)
+            response_text = response.text
+            
+            # Clean up the response if it starts with "Assistant:"
+            if response_text.startswith("Assistant:"):
+                response_text = response_text[len("Assistant:"):].strip()
         
-        # If the response breaks character, replace it with a narrative response
-        if "AI" in bot_response or "assist" in bot_response.lower() or "help you" in bot_response.lower():
-            char_name = CHARACTERS[character_id]['name']
-            bot_response = f"*{char_name} tilts her head thoughtfully, a gentle smile playing on her lips.*\n\n\"I'm feeling wonderful today, especially with such lovely company,\" she says warmly, her eyes meeting yours with genuine interest."
+        # Check if response breaks character and fix if needed
+        if "AI" in response_text or "assist" in response_text.lower() or "help you" in response_text.lower():
+            response_text = f"*{character['name']} tilts her head thoughtfully, a gentle smile playing on her lips.*\n\n\"I'm feeling wonderful today, especially with such lovely company,\" she says warmly, her eyes meeting yours with genuine interest."
+        
+        # Calculate final cost
+        final_cost = calculate_message_cost(message, response_text)
         
         return jsonify({
-            "response": bot_response,
-            "character": CHARACTERS[character_id]
+            'response': response_text,
+            'cost': final_cost
         })
-    
+        
     except Exception as e:
-        print(f"Error in chat process: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        print(f"Error: {str(e)}")
+        return jsonify({'error': 'An error occurred processing your request'}), 500
 
 @app.route('/admin')
 def admin():

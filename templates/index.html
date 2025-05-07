@@ -75,6 +75,29 @@
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
         }
 
+        .model-selector {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-right: 1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .model-selector:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .model-selector option {
+            background: #8e44ad;
+            color: white;
+        }
+
         .character-select {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -269,23 +292,20 @@
             display: none;
             margin: 1rem auto;
             text-align: center;
+            font-style: italic;
+            color: #8e44ad;
         }
 
-        .loading span {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            background-color: #ff69b4;
-            border-radius: 50%;
-            margin: 0 3px;
-            animation: bounce 0.6s infinite alternate;
+        .loading::after {
+            content: '';
+            animation: dots 1.5s steps(5, end) infinite;
         }
 
-        .loading span:nth-child(2) { animation-delay: 0.2s; }
-        .loading span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes bounce {
-            to { transform: translateY(-10px); }
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
         }
 
         /* Scrollbar styling */
@@ -445,6 +465,111 @@
             background: none;
             padding: 0;
         }
+
+        .flower-balance {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .flower-balance i {
+            color: #ff69b4;
+        }
+
+        .buy-flowers-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            margin-left: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .buy-flowers-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .paywall-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .paywall-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .flower-packages {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .package-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .package-card:hover {
+            border-color: #9b59b6;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(155, 89, 182, 0.2);
+        }
+
+        .package-card h4 {
+            color: #8e44ad;
+            margin-bottom: 0.5rem;
+        }
+
+        .package-card p {
+            color: #666;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 20px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
     </style>
 </head>
 <body>
@@ -454,9 +579,28 @@
         <div class="chat-content">
             <div class="chat-header">
                 <h2 class="mb-0">Fantasy Chat</h2>
-                <a href="/admin" target="_blank" class="admin-button">
-                    <i class="fas fa-cog"></i> Admin Panel
-                </a>
+                <div class="d-flex align-items-center">
+                    <div class="flower-balance">
+                        <i class="fas fa-flower"></i>
+                        <span id="flower-balance">30</span> flowers
+                        <button class="buy-flowers-btn" onclick="showPaywall()">
+                            <i class="fas fa-plus"></i> Buy Flowers
+                        </button>
+                    </div>
+                    <select class="model-selector" id="model-selector">
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4.1">GPT-4.1</option>
+                        <option value="gpt-3.5">GPT-3.5</option>
+                        <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                        <option value="claude-3-opus">Claude 3 Opus</option>
+                        <option value="gemini-2.5">Gemini 2.5</option>
+                        <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                    </select>
+                    <a href="/admin" target="_blank" class="admin-button">
+                        <i class="fas fa-cog"></i> Admin Panel
+                    </a>
+                </div>
             </div>
             
             <div class="character-select" id="character-select">
@@ -486,10 +630,38 @@
         </div>
     </div>
 
+    <div class="paywall-overlay" id="paywall">
+        <div class="paywall-content">
+            <h3>Need More Flowers?</h3>
+            <p>Purchase flowers to continue your chat experience!</p>
+            <div class="flower-packages">
+                <div class="package-card" onclick="purchaseFlowers(100)">
+                    <h4>100 Flowers</h4>
+                    <p>$4.99</p>
+                </div>
+                <div class="package-card" onclick="purchaseFlowers(300)">
+                    <h4>300 Flowers</h4>
+                    <p>$12.99</p>
+                </div>
+                <div class="package-card" onclick="purchaseFlowers(500)">
+                    <h4>500 Flowers</h4>
+                    <p>$19.99</p>
+                </div>
+                <div class="package-card" onclick="purchaseFlowers(1000)">
+                    <h4>1000 Flowers</h4>
+                    <p>$34.99</p>
+                </div>
+            </div>
+            <button class="btn btn-secondary" onclick="closePaywall()">Maybe Later</button>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         let currentCharacter = null;
         const characters = JSON.parse(document.getElementById('chat-container').dataset.characters);
+        let flowerBalance = parseInt(localStorage.getItem('flowerBalance')) || 30;
+        updateFlowerBalance(flowerBalance);
 
         function scrollToBottom() {
             const chatMessages = document.getElementById('chat-messages');
@@ -578,9 +750,15 @@
         });
         
         $(document).ready(function() {
-            // Remove these lines since we're handling display in CSS
-            // document.getElementById('chat-messages').style.display = 'none';
-            // document.querySelector('.input-group').style.display = 'none';
+            // Load saved model preference
+            const savedModel = localStorage.getItem('selectedModel') || 'gpt-4';
+            $('#model-selector').val(savedModel);
+
+            // Handle model change
+            $('#model-selector').change(function() {
+                const selectedModel = $(this).val();
+                localStorage.setItem('selectedModel', selectedModel);
+            });
 
             $('#user-input').keypress(function(e) {
                 if (e.which == 13) {
@@ -592,6 +770,23 @@
                 const userInput = $('#user-input').val().trim();
                 if (!currentCharacter || !userInput) return;
                 
+                // Calculate cost
+                const cost = calculateCost(userInput);
+                
+                // Check balance
+                if (flowerBalance < cost) {
+                    showPaywall();
+                    return;
+                }
+                
+                // Deduct flowers
+                updateFlowerBalance(flowerBalance - cost);
+                
+                // Show low balance warning
+                if (flowerBalance < 10) {
+                    showPaywall();
+                }
+                
                 // Get and update history in localStorage
                 const histKey = 'history_' + currentCharacter;
                 // Initialize or get existing history
@@ -602,12 +797,37 @@
                     console.error('Error parsing history:', e);
                 }
 
-                history.push({role: 'user', content: userInput});
-                localStorage.setItem(histKey, JSON.stringify(history));
+                // Format the history entries properly
+                const formattedHistory = history.map(entry => ({
+                    role: entry.role || (entry.user ? 'user' : 'assistant'),
+                    content: entry.content || entry.user || entry.assistant
+                }));
+                
+                // Add new user message
+                formattedHistory.push({
+                    role: 'user',
+                    content: userInput
+                });
+
+                localStorage.setItem(histKey, JSON.stringify(formattedHistory));
                 
                 appendMessage(userInput, true);
                 $('#user-input').val('');
                 $('.loading').show();
+
+                // Show model-specific loading message
+                const modelLoadingMessages = {
+                    'gpt-4o': 'GPT-4o is thinking...',
+                    'gpt-4o-mini': 'GPT-4o Mini is processing...',
+                    'gpt-4.1': 'GPT-4.1 is responding...',
+                    'gpt-3.5': 'GPT-3.5 is responding...',
+                    'claude-3-sonnet': 'Claude 3 Sonnet is contemplating...',
+                    'claude-3-opus': 'Claude 3 Opus is analyzing...',
+                    'gemini-2.5': 'Gemini 2.5 is generating...',
+                    'gemini-2.5-pro': 'Gemini 2.5 Pro is processing...'
+                };
+                const selectedModel = $('#model-selector').val();
+                $('.loading').text(modelLoadingMessages[selectedModel] || 'Processing...');
 
                 // Send message and history
                 $.ajax({
@@ -617,18 +837,43 @@
                     data: JSON.stringify({
                         message: userInput,
                         character_id: currentCharacter,
-                        history: history
+                        model: $('#model-selector').val(),
+                        history: formattedHistory,
+                        flower_balance: parseInt(flowerBalance)
                     }),
                     success: function(response) {
                         $('.loading').hide();
+                        $('.loading').text(''); // Clear loading message
                         appendMessage(response.response);
-                        history.push({role: 'assistant', content: response.response});
-                        localStorage.setItem(histKey, JSON.stringify(history));
+                        // Update flower balance with the cost
+                        if (response.cost) {
+                            updateFlowerBalance(flowerBalance - response.cost);
+                            // Show low balance warning
+                            if (flowerBalance < 10) {
+                                showPaywall();
+                            }
+                        }
+                        formattedHistory.push({
+                            role: 'assistant',
+                            content: response.response
+                        });
+                        localStorage.setItem(histKey, JSON.stringify(formattedHistory));
                     },
                     error: function(error) {
                         $('.loading').hide();
-                        console.error('Error:', error);
-                        appendMessage('Sorry, something went wrong. Please try again.');
+                        $('.loading').text(''); // Clear loading message
+                        if (error.status === 402) {
+                            const response = JSON.parse(error.responseText);
+                            $('#paywall .paywall-content h3').text('Need More Flowers!');
+                            $('#paywall .paywall-content p').html(`
+                                This message requires ${response.required_cost} flowers, but you only have ${flowerBalance} flowers.<br><br>
+                                Purchase more flowers to continue chatting!
+                            `);
+                            showPaywall();
+                        } else {
+                            console.error('Error:', error);
+                            appendMessage('Sorry, something went wrong. Please try again.');
+                        }
                     }
                 });
             });
@@ -656,6 +901,48 @@
                 showChatInterface();
             });
         });
+
+        function updateFlowerBalance(newBalance) {
+            flowerBalance = newBalance;
+            localStorage.setItem('flowerBalance', flowerBalance);
+            $('#flower-balance').text(flowerBalance);
+        }
+
+        function calculateCost(message) {
+            // Base cost
+            let cost = 1;
+            
+            // Check for sensitive or flirting content
+            const sensitiveWords = ['kiss', 'touch', 'feel', 'body', 'intimate'];
+            const flirtingWords = ['flirt', 'wink', 'tease', 'playful', 'naughty'];
+            
+            const lowerMessage = message.toLowerCase();
+            
+            // Increase cost for sensitive content
+            if (sensitiveWords.some(word => lowerMessage.includes(word))) {
+                cost += 2;
+            }
+            
+            // Increase cost for flirting content
+            if (flirtingWords.some(word => lowerMessage.includes(word))) {
+                cost += 1;
+            }
+            
+            return cost;
+        }
+
+        function showPaywall() {
+            $('#paywall').css('display', 'flex').hide().fadeIn(300);
+        }
+
+        function closePaywall() {
+            $('#paywall').fadeOut(300);
+        }
+
+        function purchaseFlowers(amount) {
+            updateFlowerBalance(parseInt(flowerBalance) + amount);
+            closePaywall();
+        }
     </script>
 </body>
 </html> 
