@@ -130,11 +130,13 @@ def chat():
         character = characters[character_id]
         
         # Add narrative context to user's message
-        narrative_context = f"[Remember to stay in character and maintain the narrative style. Describe {character['name']}'s actions, expressions, and surroundings in third person, using *asterisks* for actions and quotes for dialogue. Never break character or acknowledge being an AI. Vary your narrative openings and scene descriptions to avoid repetition.]\n\nUser: {message}"
+        user_message_content = message
         
-        # Base system message with character info and narrative requirements
-        base_system_message = f"{character['system_message']}\n\n{SENSUAL_ENHANCER}"
-        narrative_system_message = f"IMPORTANT: You are {character['name']}. Never break character or acknowledge being an AI. Always respond in third person narrative style with actions in *asterisks* and dialogue in quotes. Vary your narrative openings - don't always start with eyes or standard expressions. Use the full range of sensory details and scene-setting elements."
+        # Universal narrative/formatting instructions
+        narrative_system_message = f"IMPORTANT: You are {character['name']}. Never break character or acknowledge being an AI. Always respond in third person narrative style with actions in *asterisks* and dialogue in quotes. Vary your narrative openings - don't always start with eyes or standard expressions, the location, the atmosphere, the setting, the way they are moving, the way they are breathing, the way they are touching, the way they are looking at you. Use the full range of sensory details and scene-setting elements."
+        
+        # Compose the system prompt: universal instructions first, then character background/personality
+        full_system_message = f"{narrative_system_message}\n\n{SENSUAL_ENHANCER}\n\n{character['system_message']}"
 
         # Configure model-specific parameters and format messages accordingly
         response_text = ""
@@ -147,8 +149,7 @@ def chat():
         if selected_model in ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-3.5']:
             # OpenAI API format
             messages = [
-                {"role": "system", "content": base_system_message},
-                {"role": "system", "content": narrative_system_message}
+                {"role": "system", "content": full_system_message}
             ]
             
             # Add chat history
@@ -156,8 +157,8 @@ def chat():
                 if "role" in entry and "content" in entry:
                     messages.append(entry)
             
-            # Add the new message with narrative context
-            messages.append({"role": "user", "content": narrative_context})
+            # Add the new message (no narrative context)
+            messages.append({"role": "user", "content": user_message_content})
             
             model_name_map = {
                 'gpt-4o': 'gpt-4o',
@@ -167,7 +168,7 @@ def chat():
             }
             model_name = model_name_map.get(selected_model, 'gpt-4o-mini')  # Default to gpt-4o-mini
             
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model=model_name,
                 messages=messages,
                 temperature=0.9,  # Increase creativity
@@ -175,7 +176,7 @@ def chat():
                 presence_penalty=0.6,  # Encourage more varied responses
                 frequency_penalty=0.6  # Discourage repetitive responses
             )
-            response_text = response.choices[0].message['content']
+            response_text = response.choices[0].message.content
             
         elif selected_model.startswith('claude-3'):
             model_name = {
@@ -197,10 +198,10 @@ def chat():
                 model=model_name,
                 max_tokens=4096,
                 temperature=0.9,
-                system=f"{base_system_message}\n\n{narrative_system_message}",
+                system=full_system_message,
                 messages=[
                     *formatted_messages,
-                    {"role": "user", "content": narrative_context}
+                    {"role": "user", "content": user_message_content}
                 ]
             )
             response_text = response.content
@@ -214,9 +215,8 @@ def chat():
             model = genai.GenerativeModel(model_name)
             chat = model.start_chat(history=[])
             
-            # Send system messages
-            chat.send_message(f"System: {base_system_message}")
-            chat.send_message(f"System: {narrative_system_message}")
+            # Send system message
+            chat.send_message(f"System: {full_system_message}")
             
             # Add chat history
             for entry in history:
@@ -224,8 +224,8 @@ def chat():
                     prefix = "User: " if entry["role"] == "user" else "Assistant: "
                     chat.send_message(f"{prefix}{entry['content']}")
             
-            # Send the narrative context
-            response = chat.send_message(narrative_context)
+            # Send the user message (no narrative context)
+            response = chat.send_message(user_message_content)
             response_text = response.text
             
             # Clean up the response if it starts with "Assistant:"
@@ -235,13 +235,12 @@ def chat():
         else:
             # Default to gpt-4o-mini for any unrecognized model
             messages = [
-                {"role": "system", "content": base_system_message},
-                {"role": "system", "content": narrative_system_message},
+                {"role": "system", "content": full_system_message},
                 *[entry for entry in history if "role" in entry and "content" in entry],
-                {"role": "user", "content": narrative_context}
+                {"role": "user", "content": user_message_content}
             ]
             
-            response = openai.ChatCompletion.create(
+            response = openai.chat.completions.create(
                 model='gpt-4o-mini',
                 messages=messages,
                 temperature=0.9,
@@ -249,7 +248,7 @@ def chat():
                 presence_penalty=0.6,
                 frequency_penalty=0.6
             )
-            response_text = response.choices[0].message['content']
+            response_text = response.choices[0].message.content
         
         # Check if response breaks character and fix if needed
         if "AI" in response_text or "assist" in response_text.lower() or "help you" in response_text.lower():
